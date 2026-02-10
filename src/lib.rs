@@ -8,16 +8,16 @@
 mod pow10tab;
 
 #[allow(unused_imports)]
-use pow10tab::{POW10_MIN, POW10_MAX, POW10_TAB};
+use pow10tab::{POW10_MAX, POW10_MIN, POW10_TAB};
 
-/// PmHiLo represents hi<<64 - lo.
+/// `PmHiLo` represents `hi<<64 - lo`.
 #[derive(Clone, Copy)]
 pub(crate) struct PmHiLo {
     pub(crate) hi: u64,
     pub(crate) lo: u64,
 }
 
-/// Scaler holds derived scaling constants for a given e, p pair.
+/// Scaler holds derived scaling constants for a given (e, p) pair.
 #[derive(Clone, Copy)]
 struct Scaler {
     pm: PmHiLo,
@@ -32,17 +32,17 @@ impl std::fmt::Display for Unrounded {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let u = self.0;
         let plus = if u & 1 != 0 { "+" } else { "" };
-        write!(f, "\u{27e8}{}.{}{}\u{27e9}", u >> 2, 5 * ((u >> 1) & 1), plus)
+        write!(f, "\u{27e8}{}.{}{plus}\u{27e9}", u >> 2, 5 * ((u >> 1) & 1))
     }
 }
 
-#[allow(dead_code)]
+#[allow(dead_code, clippy::float_cmp)]
 fn unround(x: f64) -> Unrounded {
     let floor_4x = (4.0 * x).floor();
-    Unrounded(floor_4x as u64 | (floor_4x != 4.0 * x) as u64)
+    Unrounded(floor_4x as u64 | u64::from(floor_4x != 4.0 * x))
 }
 
-#[allow(dead_code)]
+#[allow(dead_code, clippy::many_single_char_names)]
 impl Unrounded {
     fn floor(self) -> u64 { self.0 >> 2 }
     fn round_half_down(self) -> u64 { (self.0 + 1) >> 2 }
@@ -53,27 +53,27 @@ impl Unrounded {
 
     fn div(self, d: u64) -> Unrounded {
         let x = self.0;
-        Unrounded((x / d) | (self.0 & 1) | ((x % d != 0) as u64))
+        Unrounded((x / d) | (self.0 & 1) | u64::from(x % d != 0))
     }
 
     fn rsh(self, s: u32) -> Unrounded {
-        Unrounded((self.0 >> s) | (self.0 & 1) | (((self.0 & ((1u64 << s) - 1)) != 0) as u64))
+        Unrounded((self.0 >> s) | (self.0 & 1) | u64::from(self.0 & ((1u64 << s) - 1) != 0))
     }
 }
 
-/// log10_pow2(x) returns floor(log10(2**x)) = floor(x * log10(2)).
+/// `log10_pow2(x)` returns `floor(log10(2**x))` = `floor(x * log10(2))`.
 fn log10_pow2(x: i32) -> i32 {
     // log10(2) ~ 0.30102999566 ~ 78913 / 2^18
     (x * 78913) >> 18
 }
 
-/// log2_pow10(x) returns floor(log2(10**x)) = floor(x * log2(10)).
+/// `log2_pow10(x)` returns `floor(log2(10**x))` = `floor(x * log2(10))`.
 fn log2_pow10(x: i32) -> i32 {
     // log2(10) ~ 3.32192809489 ~ 108853 / 2^15
-    (x * 108853) >> 15
+    (x * 108_853) >> 15
 }
 
-/// UINT64_POW10[x] is 10**x.
+/// `UINT64_POW10[x]` is `10**x`.
 const UINT64_POW10: [u64; 20] = [
     1,
     10,
@@ -97,9 +97,10 @@ const UINT64_POW10: [u64; 20] = [
     10_000_000_000_000_000_000,
 ];
 
-/// unpack64 returns (m, e) such that f = m * 2**e.
+/// `unpack64` returns (m, e) such that `f = m * 2**e`.
 /// The caller is expected to have handled 0, NaN, and +/-Inf already.
-/// To unpack a f32, use unpack64(f as f64).
+/// To unpack an `f32`, use `unpack64(f as f64)`.
+#[allow(clippy::many_single_char_names)]
 fn unpack64(f: f64) -> (u64, i32) {
     const SHIFT: u32 = 64 - 53; // 11
     const MIN_EXP: i32 = -(1074 + SHIFT as i32); // -1085
@@ -115,7 +116,7 @@ fn unpack64(f: f64) -> (u64, i32) {
     (m, (e - 1) + MIN_EXP)
 }
 
-/// pack64 takes (m, e) and returns f = m * 2**e.
+/// `pack64` takes (m, e) and returns `f = m * 2**e`.
 /// It assumes the caller has provided a 53-bit mantissa m
 /// and an exponent that is in range for the mantissa.
 fn pack64(m: u64, e: i32) -> f64 {
@@ -125,13 +126,13 @@ fn pack64(m: u64, e: i32) -> f64 {
     f64::from_bits((m & !(1u64 << 52)) | (((1075 + e) as u64) << 52))
 }
 
-/// unmin returns the minimum unrounded that rounds to x.
+/// `unmin` returns the minimum unrounded that rounds to x.
 fn unmin(x: u64) -> Unrounded {
     Unrounded((x << 2) - 2)
 }
 
-/// prescale returns the scaling constants for e, p.
-/// lp must be log2_pow10(p).
+/// `prescale` returns the scaling constants for (e, p).
+/// `lp` must be `log2_pow10(p)`.
 fn prescale(e: i32, p: i32, lp: i32) -> Scaler {
     Scaler {
         pm: POW10_TAB[(p - POW10_MIN) as usize],
@@ -139,26 +140,31 @@ fn prescale(e: i32, p: i32, lp: i32) -> Scaler {
     }
 }
 
-/// uscale returns unround(x * 2**e * 10**p).
-/// The caller should pass c = prescale(e, p, log2_pow10(p))
+/// `uscale` returns `unround(x * 2**e * 10**p)`.
+/// The caller should pass `c = prescale(e, p, log2_pow10(p))`
 /// and should have left-justified x so its high bit is set.
 fn uscale(x: u64, c: Scaler) -> Unrounded {
-    let r = x as u128 * c.pm.hi as u128;
+    let r = u128::from(x) * u128::from(c.pm.hi);
     let mut hi = (r >> 64) as u64;
     let mid = r as u64;
     let mut sticky = 1u64;
     let s = c.s as u32;
     if hi & ((1u64 << (s & 63)) - 1) == 0 {
-        let r2 = x as u128 * c.pm.lo as u128;
+        let r2 = u128::from(x) * u128::from(c.pm.lo);
         let mid2 = (r2 >> 64) as u64;
-        sticky = (mid.wrapping_sub(mid2) > 1) as u64;
-        hi -= (mid < mid2) as u64;
+        sticky = u64::from(mid.wrapping_sub(mid2) > 1);
+        hi -= u64::from(mid < mid2);
     }
     Unrounded((hi >> s) | sticky)
 }
 
-/// fixed_width returns the n-digit decimal form of f as (d, p) where f ~ d * 10**p.
-/// n can be at most 18.
+/// Returns the n-digit decimal form of f as (d, p) where `f ~ d * 10**p`.
+///
+/// # Panics
+///
+/// Panics if `n > 18`.
+#[must_use]
+#[allow(clippy::many_single_char_names)]
 pub fn fixed_width(f: f64, n: i32) -> (u64, i32) {
     assert!(n <= 18, "too many digits");
     let (m, e) = unpack64(f);
@@ -174,8 +180,13 @@ pub fn fixed_width(f: f64, n: i32) -> (u64, i32) {
     (d, -p)
 }
 
-/// parse rounds d * 10**p to the nearest f64.
-/// d can have at most 19 digits.
+/// Rounds `d * 10**p` to the nearest f64.
+///
+/// # Panics
+///
+/// Panics if `d > 10_000_000_000_000_000_000` (more than 19 digits).
+#[must_use]
+#[allow(clippy::many_single_char_names)]
 pub fn parse(d: u64, p: i32) -> f64 {
     assert!(d <= 10_000_000_000_000_000_000, "too many digits");
     let b = 64 - d.leading_zeros() as i32; // bits.Len64(d)
@@ -188,15 +199,16 @@ pub fn parse(d: u64, p: i32) -> f64 {
     //       u = u.rsh(1)
     //       e = e - 1
     //   }
-    let s = (u >= unmin(1u64 << 53)) as u32;
+    let s = u32::from(u >= unmin(1u64 << 53));
     u = Unrounded((u.0 >> s) | (u.0 & 1));
     e -= s as i32;
 
     pack64(u.round(), -e)
 }
 
-/// parse_text parses a decimal string s and returns the nearest f64.
-/// Returns None if the input is malformed.
+/// Parses a decimal string and returns the nearest f64.
+/// Returns `None` if the input is malformed.
+#[must_use]
 pub fn parse_text(s: &[u8]) -> Option<f64> {
     fn is_digit(c: u8) -> bool {
         c.wrapping_sub(b'0') <= 9
@@ -209,7 +221,7 @@ pub fn parse_text(s: &[u8]) -> Option<f64> {
 
     // Read integer digits.
     while i < s.len() && is_digit(s[i]) {
-        d = d * 10 + (s[i] - b'0') as u64;
+        d = d * 10 + u64::from(s[i] - b'0');
         i += 1;
     }
     if i > MAX_DIGITS {
@@ -220,7 +232,7 @@ pub fn parse_text(s: &[u8]) -> Option<f64> {
     if i < s.len() && s[i] == b'.' {
         i += 1;
         while i < s.len() && is_digit(s[i]) {
-            d = d * 10 + (s[i] - b'0') as u64;
+            d = d * 10 + u64::from(s[i] - b'0');
             frac += 1;
             i += 1;
         }
@@ -249,7 +261,7 @@ pub fn parse_text(s: &[u8]) -> Option<f64> {
             return None; // missing or too large exponent
         }
         while i < s.len() && is_digit(s[i]) {
-            p = p * 10 + (s[i] - b'0') as i32;
+            p = p * 10 + i32::from(s[i] - b'0');
             i += 1;
         }
         p *= sign;
@@ -260,9 +272,11 @@ pub fn parse_text(s: &[u8]) -> Option<f64> {
     Some(parse(d, p - frac))
 }
 
-/// short computes the shortest formatting of f,
+/// Computes the shortest formatting of f,
 /// using as few digits as possible that will still round trip
 /// back to the original f64.
+#[must_use]
+#[allow(clippy::many_single_char_names)]
 pub fn short(f: f64) -> (u64, i32) {
     const MIN_EXP: i32 = -1085;
 
@@ -300,15 +314,16 @@ pub fn short(f: f64) -> (u64, i32) {
     (d, -p)
 }
 
-/// skewed computes the skewed footprint of m * 2**e,
-/// which is floor(log10(3/4 * 2**e)) = floor(e*log10(2) - log10(4/3)).
+/// Computes the skewed footprint of `m * 2**e`,
+/// which is `floor(log10(3/4 * 2**e))` = `floor(e*log10(2) - log10(4/3))`.
 fn skewed(e: i32) -> i32 {
-    (e * 631305 - 261663) >> 21
+    (e * 631_305 - 261_663) >> 21
 }
 
-/// trim_zeros removes trailing zeros from x * 10**p.
-/// If x ends in k zeros, trim_zeros returns (x/10**k, p+k).
-/// It assumes that x ends in at most 16 zeros.
+/// Removes trailing zeros from `x * 10**p`.
+/// If x ends in k zeros, returns `(x/10**k, p+k)`.
+/// Assumes that x ends in at most 16 zeros.
+#[allow(clippy::unreadable_literal)]
 fn trim_zeros(x: u64, p: i32) -> (u64, i32) {
     const INV5P8: u64 = 0xc767074b22e90e21; // inverse of 5**8
     const INV5P4: u64 = 0xd288ce703afb7e91; // inverse of 5**4
@@ -351,8 +366,8 @@ fn trim_zeros(x: u64, p: i32) -> (u64, i32) {
     (x, p)
 }
 
-/// i2a is the formatting of 00..99 concatenated,
-/// a lookup table for formatting [0, 99].
+/// `I2A` is the formatting of 00..99 concatenated,
+/// a lookup table for formatting \[0, 99\].
 const I2A: &[u8] = b"\
     00010203040506070809\
     10111213141516171819\
@@ -365,7 +380,7 @@ const I2A: &[u8] = b"\
     80818283848586878889\
     90919293949596979899";
 
-/// format_base10 formats the decimal representation of u into a.
+/// Formats the decimal representation of u into a.
 /// The caller is responsible for ensuring that a is big enough to hold u.
 /// If a is too big, leading zeros will be filled in as needed.
 fn format_base10(a: &mut [u8], mut u: u64) {
@@ -414,13 +429,14 @@ fn format_base10(a: &mut [u8], mut u: u64) {
     }
 }
 
-/// fmt_float formats (d, p) into s in exponential notation.
+/// Formats (d, p) into s in exponential notation.
 /// The caller must pass nd set to the number of digits in d.
-/// It returns the number of bytes written to s.
+/// Returns the number of bytes written to s.
+#[must_use]
 pub fn fmt_float(s: &mut [u8], d: u64, p: i32, nd: i32) -> usize {
     let nd = nd as usize;
     // Put digits into s, leaving room for decimal point.
-    format_base10(&mut s[1..nd + 1], d);
+    format_base10(&mut s[1..=nd], d);
     let mut p = p + nd as i32 - 1;
 
     // Move first digit up and insert decimal point.
@@ -451,25 +467,26 @@ pub fn fmt_float(s: &mut [u8], d: u64, p: i32, nd: i32) -> usize {
     n + 5
 }
 
-/// digits returns the number of decimal digits in d.
+/// Returns the number of decimal digits in d.
+#[must_use]
 pub fn digits(d: u64) -> i32 {
     let nd = log10_pow2(64 - d.leading_zeros() as i32);
-    nd + (d >= UINT64_POW10[nd as usize]) as i32
+    nd + i32::from(d >= UINT64_POW10[nd as usize])
 }
 
 #[cfg(test)]
 mod comprehensive_tests;
 
 #[cfg(test)]
+#[allow(clippy::approx_constant, clippy::float_cmp, clippy::unreadable_literal)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_unpack_pack_roundtrip() {
         for &f in &[1.0, 0.1, 3.14, 1e100, 5e-324, 1.7976931348623157e308] {
-            let (m, e) = unpack64(f);
-            assert!(m >> 63 == 1, "high bit not set for {}", f);
-            let _ = (m, e);
+            let (m, _e) = unpack64(f);
+            assert!(m >> 63 == 1, "high bit not set for {f}");
         }
     }
 
@@ -589,7 +606,7 @@ mod tests {
         ] {
             let (d, p) = short(f);
             let f2 = parse(d, p);
-            assert_eq!(f, f2, "round-trip failed for {} (d={}, p={})", f, d, p);
+            assert_eq!(f, f2, "round-trip failed for {f} (d={d}, p={p})");
         }
     }
 }

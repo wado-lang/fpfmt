@@ -1,3 +1,4 @@
+#[allow(clippy::unreadable_literal)]
 const HARD: &[(i32, u64, u64)] = &[
     (-400, 0x109e9ca62cbb67, 0x1ff2cac926600d),
     (-399, 0x125b143979cd57, 0x176a77ee0304c2),

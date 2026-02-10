@@ -1,5 +1,7 @@
 // Comprehensive tests ported from Go fpfmt_test.go.
 
+#![allow(clippy::float_cmp, clippy::unreadable_literal)]
+
 use super::*;
 
 const TEST_IVY: &str = include_str!("testdata/test.ivy");
@@ -7,16 +9,17 @@ include!("hard_tests.rs");
 
 // ---- Utility functions ----
 
-/// ldexp(x, exp) returns x * 2**exp.
+/// `ldexp(x, exp)` returns `x * 2**exp`.
 fn ldexp(x: f64, mut exp: i32) -> f64 {
-    if x == 0.0 || x.is_infinite() || x.is_nan() {
-        return x;
-    }
-    let mut result = x;
     // 2^1023 as f64
     const POW2_1023: f64 = 8.98846567431158e+307; // f64::from_bits(0x7FE0000000000000)
     // 2^(-1022) as f64
     const POW2_NEG1022: f64 = 2.2250738585072014e-308; // f64::from_bits(0x0010000000000000)
+
+    if x == 0.0 || x.is_infinite() || x.is_nan() {
+        return x;
+    }
+    let mut result = x;
     while exp > 1023 {
         result *= POW2_1023;
         exp -= 1023;
@@ -28,7 +31,7 @@ fn ldexp(x: f64, mut exp: i32) -> f64 {
     result * f64::from_bits(((exp + 1023) as u64) << 52)
 }
 
-/// Parse a hex float literal like "0x1.0000000000001p-229".
+/// Parse a hex float literal like `0x1.0000000000001p-229`.
 fn parse_hex_float(s: &str) -> f64 {
     if let Some(rest) = s.strip_prefix('-') {
         return -parse_hex_float(rest);
@@ -131,7 +134,7 @@ fn ivy_tests() -> Vec<IvyTest> {
     tests
 }
 
-/// Equivalent of Go's someTestFloats(): powers of 2, powers of 10, unique ivy inputs.
+/// Equivalent of Go's `someTestFloats()`: powers of 2, powers of 10, unique ivy inputs.
 fn some_test_floats() -> Vec<f64> {
     let mut floats = Vec::new();
 
@@ -170,7 +173,7 @@ fn some_test_floats() -> Vec<f64> {
     floats
 }
 
-/// Equivalent of Go's testFloats(): someTestFloats plus nextafter neighbors.
+/// Equivalent of Go's `testFloats()`: `someTestFloats` plus nextafter neighbors.
 fn all_test_floats() -> Vec<f64> {
     let mut floats = Vec::new();
     for f in some_test_floats() {
@@ -181,10 +184,10 @@ fn all_test_floats() -> Vec<f64> {
     floats
 }
 
-/// Generate floats from the hard table (ported from Go's hardFloats).
+/// Generate floats from the hard table (ported from Go's `hardFloats`).
 fn hard_floats() -> Vec<f64> {
     let mut out = Vec::new();
-    for &(p, xmin, xmax) in HARD.iter() {
+    for &(p, xmin, xmax) in HARD {
         // Go uses -int(math.Floor(math.Log2(math.Pow10(p)))) which is -floor(p*log2(10)).
         // Use our integer approximation; equivalent for all practical purposes.
         let pe = -log2_pow10(p);
@@ -202,7 +205,7 @@ fn hard_floats() -> Vec<f64> {
     out
 }
 
-/// Generate random floats matching Go's math/rand/v2 ChaCha8 with zero seed.
+/// Generate random floats matching Go's `math/rand/v2` `ChaCha8` with zero seed.
 fn rand_floats() -> Vec<f64> {
     let seed = [0u8; 32];
     let mut rng = chacha8rand::ChaCha8Rand::new(&seed);
@@ -215,9 +218,9 @@ fn rand_floats() -> Vec<f64> {
     fs
 }
 
-/// Port of Go's math/rand/v2 Uint64N (Lemire's algorithm).
+/// Port of Go's `math/rand/v2` `Uint64N` (Lemire's algorithm).
 fn uint64n(rng: &mut chacha8rand::ChaCha8Rand, n: u64) -> u64 {
-    if n & (n - 1) == 0 {
+    if n.is_power_of_two() {
         return rng.read_u64() & (n - 1);
     }
     let (mut hi, mut lo) = mul128(rng.read_u64(), n);
@@ -231,14 +234,14 @@ fn uint64n(rng: &mut chacha8rand::ChaCha8Rand, n: u64) -> u64 {
 }
 
 fn mul128(a: u64, b: u64) -> (u64, u64) {
-    let r = a as u128 * b as u128;
+    let r = u128::from(a) * u128::from(b);
     ((r >> 64) as u64, r as u64)
 }
 
 // ---- Tests ----
 
-/// TestShort comprehensive: verify short(f) round-trips for all test floats.
-/// Port of Go's TestShort (uscale implementation).
+/// `TestShort` comprehensive: verify `short(f)` round-trips for all test floats.
+/// Port of Go's `TestShort` (uscale implementation).
 #[test]
 fn test_short_all_test_floats() {
     let mut fail = 0;
@@ -250,23 +253,17 @@ fn test_short_all_test_floats() {
         let f2 = parse(d, p);
         if f != f2 {
             eprintln!(
-                "short({:e} = {:#018x}) roundtrip failed: d={}, p={}, got {:e}",
-                f,
+                "short({f:e} = {:#018x}) roundtrip failed: d={d}, p={p}, got {f2:e}",
                 f.to_bits(),
-                d,
-                p,
-                f2
             );
             fail += 1;
-            if fail >= 100 {
-                panic!("too many failures");
-            }
+            assert!(fail < 100, "too many failures");
         }
     }
-    assert_eq!(fail, 0, "{} failures in short roundtrip (all_test_floats)", fail);
+    assert_eq!(fail, 0, "{fail} failures in short roundtrip (all_test_floats)");
 }
 
-/// TestShort for hard floats.
+/// `TestShort` for hard floats.
 #[test]
 fn test_short_hard_floats() {
     let mut fail = 0;
@@ -278,23 +275,17 @@ fn test_short_hard_floats() {
         let f2 = parse(d, p);
         if f != f2 {
             eprintln!(
-                "short({:e} = {:#018x}) roundtrip failed: d={}, p={}, got {:e}",
-                f,
+                "short({f:e} = {:#018x}) roundtrip failed: d={d}, p={p}, got {f2:e}",
                 f.to_bits(),
-                d,
-                p,
-                f2
             );
             fail += 1;
-            if fail >= 100 {
-                panic!("too many failures");
-            }
+            assert!(fail < 100, "too many failures");
         }
     }
-    assert_eq!(fail, 0, "{} failures in short roundtrip (hard_floats)", fail);
+    assert_eq!(fail, 0, "{fail} failures in short roundtrip (hard_floats)");
 }
 
-/// TestShort for random floats.
+/// `TestShort` for random floats.
 #[test]
 fn test_short_rand_floats() {
     let mut fail = 0;
@@ -306,24 +297,18 @@ fn test_short_rand_floats() {
         let f2 = parse(d, p);
         if f != f2 {
             eprintln!(
-                "short({:e} = {:#018x}) roundtrip failed: d={}, p={}, got {:e}",
-                f,
+                "short({f:e} = {:#018x}) roundtrip failed: d={d}, p={p}, got {f2:e}",
                 f.to_bits(),
-                d,
-                p,
-                f2
             );
             fail += 1;
-            if fail >= 100 {
-                panic!("too many failures");
-            }
+            assert!(fail < 100, "too many failures");
         }
     }
-    assert_eq!(fail, 0, "{} failures in short roundtrip (rand_floats)", fail);
+    assert_eq!(fail, 0, "{fail} failures in short roundtrip (rand_floats)");
 }
 
-/// TestShort: verify formatted output matches Rust's shortest representation.
-/// In Go this compares against strconv.FormatFloat; here we verify minimality.
+/// `TestShort`: verify formatted output matches Rust's shortest representation.
+/// In Go this compares against `strconv.FormatFloat`; here we verify minimality.
 #[test]
 fn test_short_minimality() {
     let mut fail = 0;
@@ -342,21 +327,18 @@ fn test_short_minimality() {
             let f_fewer = parse(d_fewer, p + 1);
             if f_fewer == f {
                 eprintln!(
-                    "short({:e}) not minimal: d={} ({}d), d_fewer={} also works",
-                    f, d, nd, d_fewer
+                    "short({f:e}) not minimal: d={d} ({nd}d), d_fewer={d_fewer} also works",
                 );
                 fail += 1;
-                if fail >= 100 {
-                    panic!("too many failures");
-                }
+                assert!(fail < 100, "too many failures");
             }
         }
     }
-    assert_eq!(fail, 0, "{} failures in short minimality", fail);
+    assert_eq!(fail, 0, "{fail} failures in short minimality");
 }
 
-/// TestParse comprehensive: verify parse against Rust stdlib for many inputs.
-/// Port of Go's TestParse / parseTests.
+/// `TestParse` comprehensive: verify parse against Rust stdlib for many inputs.
+/// Port of Go's `TestParse` / `parseTests`.
 #[test]
 fn test_parse_comprehensive() {
     let mut fail = 0;
@@ -368,15 +350,10 @@ fn test_parse_comprehensive() {
 
         // Test with 17-digit fixed width
         let (d, p) = fixed_width(f, 17);
-        let s = format!("{}e{}", d, p);
+        let s = format!("{d}e{p}");
         let have = parse_text(s.as_bytes());
         if have != Some(f) {
-            eprintln!(
-                "parse_text({}) = {:?}, want {:e}",
-                s,
-                have,
-                f
-            );
+            eprintln!("parse_text({s}) = {have:?}, want {f:e}");
             fail += 1;
         }
 
@@ -384,7 +361,7 @@ fn test_parse_comprehensive() {
         if p > -300 {
             for i in -3i64..=3 {
                 let d1 = d.wrapping_add(i as u64);
-                let s = format!("{}e{}", d1, p);
+                let s = format!("{d1}e{p}");
                 let want: f64 = match s.parse() {
                     Ok(v) => v,
                     Err(_) => continue,
@@ -395,8 +372,7 @@ fn test_parse_comprehensive() {
                 if let Some(have) = parse_text(s.as_bytes()) {
                     if have != want {
                         eprintln!(
-                            "parse_text({}) = {:e}, want {:e} (17d nudge i={})",
-                            s, have, want, i
+                            "parse_text({s}) = {have:e}, want {want:e} (17d nudge i={i})",
                         );
                         fail += 1;
                     }
@@ -406,15 +382,10 @@ fn test_parse_comprehensive() {
 
         // Test with 18-digit fixed width
         let (d, p) = fixed_width(f, 18);
-        let s = format!("{}e{}", d, p);
+        let s = format!("{d}e{p}");
         let have = parse_text(s.as_bytes());
         if have != Some(f) {
-            eprintln!(
-                "parse_text({}) = {:?}, want {:e}",
-                s,
-                have,
-                f
-            );
+            eprintln!("parse_text({s}) = {have:?}, want {f:e}");
             fail += 1;
         }
 
@@ -422,7 +393,7 @@ fn test_parse_comprehensive() {
         if p > -300 {
             for i in -3i64..=3 {
                 let d1 = d.wrapping_add((i * 20) as u64);
-                let s = format!("{}e{}", d1, p);
+                let s = format!("{d1}e{p}");
                 let want: f64 = match s.parse() {
                     Ok(v) => v,
                     Err(_) => continue,
@@ -433,8 +404,7 @@ fn test_parse_comprehensive() {
                 if let Some(have) = parse_text(s.as_bytes()) {
                     if have != want {
                         eprintln!(
-                            "parse_text({}) = {:e}, want {:e} (18d nudge i={})",
-                            s, have, want, i
+                            "parse_text({s}) = {have:e}, want {want:e} (18d nudge i={i})",
                         );
                         fail += 1;
                     }
@@ -443,36 +413,31 @@ fn test_parse_comprehensive() {
         }
 
         // 19-digit test from Rust's standard formatting
-        let s = format!("{:.18e}", f);
+        let s = format!("{f:.18e}");
         let dot_pos = s.find('.').unwrap();
         let t = format!("{}{}", &s[..dot_pos], &s[dot_pos + 1..]);
         let e_pos = t.find('e').unwrap();
         let d19: u64 = t[..e_pos].parse().unwrap();
         let exp19: i32 = t[e_pos + 1..].parse().unwrap();
         let p19 = exp19 - (e_pos as i32 - 1);
-        let s19 = format!("{}e{}", d19, p19);
+        let s19 = format!("{d19}e{p19}");
         let want: f64 = s19.parse().unwrap_or(f64::INFINITY);
         if !want.is_infinite() {
             if let Some(have) = parse_text(s19.as_bytes()) {
                 if have != want {
-                    eprintln!(
-                        "parse_text({}) = {:e}, want {:e} (19d)",
-                        s19, have, want
-                    );
+                    eprintln!("parse_text({s19}) = {have:e}, want {want:e} (19d)");
                     fail += 1;
                 }
             }
         }
 
-        if fail >= 100 {
-            panic!("too many failures");
-        }
+        assert!(fail < 100, "too many failures");
     }
-    assert_eq!(fail, 0, "{} failures in parse comprehensive", fail);
+    assert_eq!(fail, 0, "{fail} failures in parse comprehensive");
 }
 
-/// TestParseRaw: verify Parse(d, p) against Rust stdlib for ivy test data.
-/// Port of Go's TestParseRaw.
+/// `TestParseRaw`: verify `Parse(d, p)` against Rust stdlib for ivy test data.
+/// Port of Go's `TestParseRaw`.
 #[test]
 fn test_parse_ivy_raw() {
     let mut fail = 0;
@@ -482,20 +447,18 @@ fn test_parse_ivy_raw() {
         let have = parse(tt.d, tt.p);
         if have != want {
             eprintln!(
-                "parse({}e{}) = {:e}, want {:e}",
-                tt.d, tt.p, have, want
+                "parse({}e{}) = {have:e}, want {want:e}",
+                tt.d, tt.p,
             );
             fail += 1;
-            if fail >= 100 {
-                panic!("too many failures");
-            }
+            assert!(fail < 100, "too many failures");
         }
     }
-    assert_eq!(fail, 0, "{} failures in parse ivy raw", fail);
+    assert_eq!(fail, 0, "{fail} failures in parse ivy raw");
 }
 
-/// TestFixedWidth: verify fixed_width against ivy test data.
-/// Port of Go's TestFixedWidth.
+/// `TestFixedWidth`: verify `fixed_width` against ivy test data.
+/// Port of Go's `TestFixedWidth`.
 #[test]
 fn test_fixed_width_ivy() {
     let mut fail = 0;
@@ -509,27 +472,23 @@ fn test_fixed_width_ivy() {
         let (d, p) = fixed_width(tt.f, tt.n);
         let have_n = fmt_float(&mut have_buf, d, p, tt.n);
         let want_n = fmt_float(&mut want_buf, tt.d, tt.p, tt.n);
-        if &have_buf[..have_n] != &want_buf[..want_n] {
+        if have_buf[..have_n] != want_buf[..want_n] {
             let have_s = std::str::from_utf8(&have_buf[..have_n]).unwrap();
             let want_s = std::str::from_utf8(&want_buf[..want_n]).unwrap();
             eprintln!(
-                "fixed({:#x}, {}) = {} want {}",
+                "fixed({:#x}, {}) = {have_s} want {want_s}",
                 tt.f.to_bits(),
                 tt.n,
-                have_s,
-                want_s
             );
             fail += 1;
-            if fail >= 100 {
-                panic!("too many failures");
-            }
+            assert!(fail < 100, "too many failures");
         }
     }
-    assert_eq!(fail, 0, "{} failures in fixed_width ivy", fail);
+    assert_eq!(fail, 0, "{fail} failures in fixed_width ivy");
 }
 
-/// TestPow10: verify power-of-10 table entries.
-/// Port of Go's TestPow10.
+/// `TestPow10`: verify power-of-10 table entries.
+/// Port of Go's `TestPow10`.
 #[test]
 fn test_pow10() {
     let cases: [(i32, PmHiLo, i32); 4] = [
@@ -562,9 +521,9 @@ fn test_pow10() {
 
     for (p, pm, pe) in cases {
         let c = prescale(0, p, log2_pow10(p));
-        assert_eq!(c.pm.hi, pm.hi, "pow10({}).hi", p);
-        assert_eq!(c.pm.lo, pm.lo, "pow10({}).lo", p);
+        assert_eq!(c.pm.hi, pm.hi, "pow10({p}).hi");
+        assert_eq!(c.pm.lo, pm.lo, "pow10({p}).lo");
         let have_pe = -(c.s + 2);
-        assert_eq!(have_pe, pe, "pow10({}).pe", p);
+        assert_eq!(have_pe, pe, "pow10({p}).pe");
     }
 }
