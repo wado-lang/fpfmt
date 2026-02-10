@@ -17,8 +17,23 @@ Provides shortest-representation and fixed-width formatting of f64 values, as we
 
 Regenerate the power-of-10 table:
 
-```
+```sh
 cargo run -p pow10gen
+```
+
+## Benchmarks
+
+Formatting and parsing 8 representative f64 values (`1.0`, `0.1`, `3.14`, `PI`, `E`, `1e23`, `5e-324`, `1.7976931348623157e308`).
+
+Measured on Apple M3 Pro, macOS 15.7.3 (aarch64):
+
+| Task | fpfmt | ryu | stdlib |
+|------|------:|----:|-------:|
+| **format** (f64 → string) | 102 ns | 164 ns | 535 ns |
+| **parse** (string → f64) | 797 ns | — | 702 ns |
+
+```sh
+cargo bench -p bench
 ```
 
 ## License

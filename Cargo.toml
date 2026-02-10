@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "tools/pow10gen"]
+members = [".", "tools/pow10gen", "tools/bench"]
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
