@@ -1,0 +1,10 @@
+[workspace]
+members = [".", "tools/pow10gen"]
+
+[package]
+name = "fpfmt"
+version = "0.1.0"
+edition = "2024"
+
+[dev-dependencies]
+chacha8rand = "0.1"
