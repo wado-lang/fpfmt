@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+#![no_std]
+
 // Port of rsc.io/fpfmt to Rust.
 // Floating point formatting algorithm.
 
@@ -27,15 +29,16 @@ struct Scaler {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct Unrounded(u64);
 
-impl std::fmt::Display for Unrounded {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for Unrounded {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let u = self.0;
         let plus = if u & 1 != 0 { "+" } else { "" };
         write!(f, "\u{27e8}{}.{}{plus}\u{27e9}", u >> 2, 5 * ((u >> 1) & 1))
     }
 }
 
-#[allow(dead_code, clippy::float_cmp)]
+#[cfg(test)]
+#[allow(clippy::float_cmp)]
 fn unround(x: f64) -> Unrounded {
     let floor_4x = (4.0 * x).floor();
     Unrounded(floor_4x as u64 | u64::from(floor_4x != 4.0 * x))
@@ -539,12 +542,12 @@ mod tests {
 
     #[test]
     fn test_short_pi() {
-        assert_eq!(short(std::f64::consts::PI), (3141592653589793, -15));
+        assert_eq!(short(core::f64::consts::PI), (3141592653589793, -15));
     }
 
     #[test]
     fn test_fixed_width() {
-        assert_eq!(fixed_width(std::f64::consts::PI, 6), (314159, -5));
+        assert_eq!(fixed_width(core::f64::consts::PI, 6), (314159, -5));
     }
 
     #[test]
