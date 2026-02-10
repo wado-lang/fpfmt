@@ -2,7 +2,7 @@
 
 #![allow(clippy::float_cmp, clippy::unreadable_literal)]
 
-use super::*;
+use fpfmt::*;
 
 const TEST_IVY: &str = include_str!("testdata/test.ivy");
 include!("hard_tests.rs");
@@ -189,8 +189,8 @@ fn hard_floats() -> Vec<f64> {
     let mut out = Vec::new();
     for &(p, xmin, xmax) in HARD {
         // Go uses -int(math.Floor(math.Log2(math.Pow10(p)))) which is -floor(p*log2(10)).
-        // Use our integer approximation; equivalent for all practical purposes.
-        let pe = -log2_pow10(p);
+        // Use the integer approximation: floor(p * 108853 / 32768).
+        let pe = -((p * 108_853) >> 15);
         for exp in (pe - 3..=pe + 64).step_by(3) {
             let f = ldexp(xmin as f64, exp);
             if f != 0.0 && !f.is_infinite() {
@@ -485,45 +485,4 @@ fn test_fixed_width_ivy() {
         }
     }
     assert_eq!(fail, 0, "{fail} failures in fixed_width ivy");
-}
-
-/// `TestPow10`: verify power-of-10 table entries.
-/// Port of Go's `TestPow10`.
-#[test]
-fn test_pow10() {
-    let cases: [(i32, PmHiLo, i32); 4] = [
-        (0, PmHiLo { hi: 1u64 << 63, lo: 0 }, 1),
-        (
-            25,
-            PmHiLo {
-                hi: 0x84595161401484a0,
-                lo: 0,
-            },
-            -44 + 128,
-        ),
-        (
-            72,
-            PmHiLo {
-                hi: 0x90e40fbeea1d3a4a + 1,
-                lo: 0xbc8955e946fe31ce_u64.wrapping_neg(),
-            },
-            112 + 128,
-        ),
-        (
-            -44,
-            PmHiLo {
-                hi: 0xe45c10c42a2b3b05 + 1,
-                lo: 0x8cb89a7db77c506b_u64.wrapping_neg(),
-            },
-            -274 + 128,
-        ),
-    ];
-
-    for (p, pm, pe) in cases {
-        let c = prescale(0, p, log2_pow10(p));
-        assert_eq!(c.pm.hi, pm.hi, "pow10({p}).hi");
-        assert_eq!(c.pm.lo, pm.lo, "pow10({p}).lo");
-        let have_pe = -(c.s + 2);
-        assert_eq!(have_pe, pe, "pow10({p}).pe");
-    }
 }

@@ -13,9 +13,14 @@ cast_precision_loss = "allow"
 name = "fpfmt"
 version = "0.1.0"
 edition = "2024"
+autotests = false
 
 [lints]
 workspace = true
+
+[[test]]
+name = "comprehensive"
+path = "tests/comprehensive.rs"
 
 [dev-dependencies]
 chacha8rand = "0.1"

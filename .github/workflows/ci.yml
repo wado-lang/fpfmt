@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --workspace
+
+  integrity:
+    name: Integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+          targets: wasm32-unknown-unknown
+      - run: cargo check --workspace
+      - run: cargo check --target wasm32-unknown-unknown
+      - run: cargo clippy --workspace -- -D warnings
+      - run: cargo fmt --all --check

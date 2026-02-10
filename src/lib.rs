@@ -7,8 +7,7 @@
 
 mod pow10tab;
 
-#[allow(unused_imports)]
-use pow10tab::{POW10_MAX, POW10_MIN, POW10_TAB};
+use pow10tab::{POW10_MIN, POW10_TAB};
 
 /// `PmHiLo` represents `hi<<64 - lo`.
 #[derive(Clone, Copy)]
@@ -475,12 +474,50 @@ pub fn digits(d: u64) -> i32 {
 }
 
 #[cfg(test)]
-mod comprehensive_tests;
-
-#[cfg(test)]
 #[allow(clippy::approx_constant, clippy::float_cmp, clippy::unreadable_literal)]
 mod tests {
     use super::*;
+
+    /// `TestPow10`: verify power-of-10 table entries.
+    /// Port of Go's `TestPow10`.
+    #[test]
+    fn test_pow10() {
+        let cases: [(i32, PmHiLo, i32); 4] = [
+            (0, PmHiLo { hi: 1u64 << 63, lo: 0 }, 1),
+            (
+                25,
+                PmHiLo {
+                    hi: 0x84595161401484a0,
+                    lo: 0,
+                },
+                -44 + 128,
+            ),
+            (
+                72,
+                PmHiLo {
+                    hi: 0x90e40fbeea1d3a4a + 1,
+                    lo: 0xbc8955e946fe31ce_u64.wrapping_neg(),
+                },
+                112 + 128,
+            ),
+            (
+                -44,
+                PmHiLo {
+                    hi: 0xe45c10c42a2b3b05 + 1,
+                    lo: 0x8cb89a7db77c506b_u64.wrapping_neg(),
+                },
+                -274 + 128,
+            ),
+        ];
+
+        for (p, pm, pe) in cases {
+            let c = prescale(0, p, log2_pow10(p));
+            assert_eq!(c.pm.hi, pm.hi, "pow10({p}).hi");
+            assert_eq!(c.pm.lo, pm.lo, "pow10({p}).lo");
+            let have_pe = -(c.s + 2);
+            assert_eq!(have_pe, pe, "pow10({p}).pe");
+        }
+    }
 
     #[test]
     fn test_unpack_pack_roundtrip() {
