@@ -1,7 +1,7 @@
 
 [package]
 name = "fpfmt"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 description = "Floating-point formatting and parsing, ported from rsc/fpfmt"
 license = "BSD-3-Clause"
