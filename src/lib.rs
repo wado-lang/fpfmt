@@ -46,12 +46,24 @@ fn unround(x: f64) -> Unrounded {
 
 #[allow(dead_code, clippy::many_single_char_names)]
 impl Unrounded {
-    fn floor(self) -> u64 { self.0 >> 2 }
-    fn round_half_down(self) -> u64 { (self.0 + 1) >> 2 }
-    fn round(self) -> u64 { (self.0 + 1 + ((self.0 >> 2) & 1)) >> 2 }
-    fn round_half_up(self) -> u64 { (self.0 + 2) >> 2 }
-    fn ceil(self) -> u64 { (self.0 + 3) >> 2 }
-    fn nudge(self, delta: i32) -> Unrounded { Unrounded(self.0.wrapping_add(delta as u64)) }
+    fn floor(self) -> u64 {
+        self.0 >> 2
+    }
+    fn round_half_down(self) -> u64 {
+        (self.0 + 1) >> 2
+    }
+    fn round(self) -> u64 {
+        (self.0 + 1 + ((self.0 >> 2) & 1)) >> 2
+    }
+    fn round_half_up(self) -> u64 {
+        (self.0 + 2) >> 2
+    }
+    fn ceil(self) -> u64 {
+        (self.0 + 3) >> 2
+    }
+    fn nudge(self, delta: i32) -> Unrounded {
+        Unrounded(self.0.wrapping_add(delta as u64))
+    }
 
     fn div(self, d: u64) -> Unrounded {
         let x = self.0;
@@ -486,7 +498,14 @@ mod tests {
     #[test]
     fn test_pow10() {
         let cases: [(i32, PmHiLo, i32); 4] = [
-            (0, PmHiLo { hi: 1u64 << 63, lo: 0 }, 1),
+            (
+                0,
+                PmHiLo {
+                    hi: 1u64 << 63,
+                    lo: 0,
+                },
+                1,
+            ),
             (
                 25,
                 PmHiLo {
@@ -638,11 +657,22 @@ mod tests {
     #[test]
     fn test_short_roundtrip() {
         for &f in &[
-            1.0, 0.1, 0.5, 2.0, 10.0, 100.0, 0.01, 0.001,
-            1.23456789, 1e10, 1e-10, 1e100, 1e-100,
-            5e-324,                        // smallest subnormal
-            2.2250738585072014e-308,        // smallest normal
-            1.7976931348623157e308,          // largest finite
+            1.0,
+            0.1,
+            0.5,
+            2.0,
+            10.0,
+            100.0,
+            0.01,
+            0.001,
+            1.23456789,
+            1e10,
+            1e-10,
+            1e100,
+            1e-100,
+            5e-324,                  // smallest subnormal
+            2.2250738585072014e-308, // smallest normal
+            1.7976931348623157e308,  // largest finite
         ] {
             let (d, p) = short(f);
             let f2 = parse(d, p);

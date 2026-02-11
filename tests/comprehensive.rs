@@ -36,7 +36,10 @@ fn parse_hex_float(s: &str) -> f64 {
     if let Some(rest) = s.strip_prefix('-') {
         return -parse_hex_float(rest);
     }
-    let s = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")).unwrap_or(s);
+    let s = s
+        .strip_prefix("0x")
+        .or_else(|| s.strip_prefix("0X"))
+        .unwrap_or(s);
 
     let (mant_str, exp_str) = s
         .split_once('p')
@@ -116,15 +119,21 @@ fn ivy_tests() -> Vec<IvyTest> {
         }
         // Format: (N ftoa HEXFLOAT) is D P
         let rest = line.strip_prefix('(').expect("bad ivy line: missing (");
-        let (n_str, rest) = rest.split_once(' ').expect("bad ivy line: missing space after N");
+        let (n_str, rest) = rest
+            .split_once(' ')
+            .expect("bad ivy line: missing space after N");
         let n: i32 = n_str.parse().expect("bad ivy line: bad N");
 
-        let rest = rest.strip_prefix("ftoa ").expect("bad ivy line: missing ftoa");
+        let rest = rest
+            .strip_prefix("ftoa ")
+            .expect("bad ivy line: missing ftoa");
         let (hex_str, rest) = rest.split_once(')').expect("bad ivy line: missing )");
         let f = parse_hex_float(hex_str);
 
         let rest = rest.strip_prefix(" is ").expect("bad ivy line: missing is");
-        let (d_str, p_str) = rest.split_once(' ').expect("bad ivy line: missing space before P");
+        let (d_str, p_str) = rest
+            .split_once(' ')
+            .expect("bad ivy line: missing space before P");
         let d: u64 = d_str.parse().expect("bad ivy line: bad D");
         let p: i32 = p_str.parse().expect("bad ivy line: bad P");
 
@@ -260,7 +269,10 @@ fn test_short_all_test_floats() {
             assert!(fail < 100, "too many failures");
         }
     }
-    assert_eq!(fail, 0, "{fail} failures in short roundtrip (all_test_floats)");
+    assert_eq!(
+        fail, 0,
+        "{fail} failures in short roundtrip (all_test_floats)"
+    );
 }
 
 /// `TestShort` for hard floats.
@@ -326,9 +338,7 @@ fn test_short_minimality() {
             let d_fewer = (d + 5) / 10; // round to nd-1 digits
             let f_fewer = parse(d_fewer, p + 1);
             if f_fewer == f {
-                eprintln!(
-                    "short({f:e}) not minimal: d={d} ({nd}d), d_fewer={d_fewer} also works",
-                );
+                eprintln!("short({f:e}) not minimal: d={d} ({nd}d), d_fewer={d_fewer} also works",);
                 fail += 1;
                 assert!(fail < 100, "too many failures");
             }
@@ -371,9 +381,7 @@ fn test_parse_comprehensive() {
                 }
                 if let Some(have) = parse_text(s.as_bytes()) {
                     if have != want {
-                        eprintln!(
-                            "parse_text({s}) = {have:e}, want {want:e} (17d nudge i={i})",
-                        );
+                        eprintln!("parse_text({s}) = {have:e}, want {want:e} (17d nudge i={i})",);
                         fail += 1;
                     }
                 }
@@ -403,9 +411,7 @@ fn test_parse_comprehensive() {
                 }
                 if let Some(have) = parse_text(s.as_bytes()) {
                     if have != want {
-                        eprintln!(
-                            "parse_text({s}) = {have:e}, want {want:e} (18d nudge i={i})",
-                        );
+                        eprintln!("parse_text({s}) = {have:e}, want {want:e} (18d nudge i={i})",);
                         fail += 1;
                     }
                 }
@@ -446,10 +452,7 @@ fn test_parse_ivy_raw() {
         let want: f64 = s.parse().unwrap();
         let have = parse(tt.d, tt.p);
         if have != want {
-            eprintln!(
-                "parse({}e{}) = {have:e}, want {want:e}",
-                tt.d, tt.p,
-            );
+            eprintln!("parse({}e{}) = {have:e}, want {want:e}", tt.d, tt.p,);
             fail += 1;
             assert!(fail < 100, "too many failures");
         }

@@ -11,8 +11,8 @@ const VALUES: [f64; 8] = [
     PI,
     E,
     1e23,
-    5e-324,                   // smallest subnormal
-    1.7976931348623157e308,   // largest finite
+    5e-324,                 // smallest subnormal
+    1.7976931348623157e308, // largest finite
 ];
 
 fn bench_format(c: &mut Criterion) {
