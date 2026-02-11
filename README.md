@@ -36,6 +36,16 @@ Measured on Apple M3 Pro, macOS 15.7.3 (aarch64):
 cargo bench -p bench
 ```
 
+## Wasm size
+
+32,905 bytes for `short` + `parse` as a cdylib (`wasm32-unknown-unknown`, `-Os`).
+
+```sh
+RUSTFLAGS="-C opt-level=s" cargo build --target wasm32-unknown-unknown --release -p wasm-size
+RUSTFLAGS="-C opt-level=z" cargo build --target wasm32-unknown-unknown --release -p wasm-size
+wc -c target/wasm32-unknown-unknown/release/wasm_size.wasm
+```
+
 ## License
 
 Same as the original: BSD-style. See [LICENSE](LICENSE).

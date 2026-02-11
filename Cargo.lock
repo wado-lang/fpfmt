@@ -550,6 +550,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasm-size"
+version = "0.0.0"
+dependencies = [
+ "fpfmt",
+]
+
+[[package]]
 name = "web-sys"
 version = "0.3.85"
 source = "registry+https://github.com/rust-lang/crates.io-index"
