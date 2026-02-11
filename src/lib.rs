@@ -55,7 +55,7 @@ impl Unrounded {
 
     fn div(self, d: u64) -> Unrounded {
         let x = self.0;
-        Unrounded((x / d) | (self.0 & 1) | u64::from(x % d != 0))
+        Unrounded((x / d) | (self.0 & 1) | u64::from(!x.is_multiple_of(d)))
     }
 
     fn rsh(self, s: u32) -> Unrounded {
