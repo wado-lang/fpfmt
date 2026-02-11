@@ -1,4 +1,4 @@
-# fpfmt
+# fpfmt [![crates.io](https://img.shields.io/crates/v/fpfmt)](https://crates.io/crates/fpfmt)
 
 Rust port of [rsc/fpfmt](https://github.com/rsc/fpfmt), a floating-point formatting algorithm.
 
