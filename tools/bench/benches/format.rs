@@ -3,6 +3,7 @@ use std::fmt::Write as _;
 
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 
+#[allow(clippy::approx_constant)]
 const VALUES: [f64; 8] = [
     1.0,
     0.1,
