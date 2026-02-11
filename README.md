@@ -29,8 +29,8 @@ Measured on Apple M3 Pro, macOS 15.7.3 (aarch64):
 
 | Task | fpfmt | ryu | stdlib |
 |------|------:|----:|-------:|
-| **format** (f64 → string) | 102 ns | 164 ns | 535 ns |
-| **parse** (string → f64) | 797 ns | — | 702 ns |
+| **format** (f64 → string) | 63 ns | 164 ns | 535 ns |
+| **parse** (string → f64) | 738 ns | — | 702 ns |
 
 ```sh
 cargo bench -p bench
@@ -38,7 +38,7 @@ cargo bench -p bench
 
 ## Wasm size
 
-32,905 bytes for `short` + `parse` as a cdylib (`wasm32-unknown-unknown`, `-Os`).
+32,970 bytes for `short` + `parse` as a cdylib (`wasm32-unknown-unknown`, `-Oz`).
 
 ```sh
 RUSTFLAGS="-C opt-level=s" cargo build --target wasm32-unknown-unknown --release -p wasm-size
