@@ -29,14 +29,6 @@ struct Scaler {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct Unrounded(u64);
 
-impl core::fmt::Display for Unrounded {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let u = self.0;
-        let plus = if u & 1 != 0 { "+" } else { "" };
-        write!(f, "\u{27e8}{}.{}{plus}\u{27e9}", u >> 2, 5 * ((u >> 1) & 1))
-    }
-}
-
 #[cfg(test)]
 #[allow(clippy::float_cmp)]
 fn unround(x: f64) -> Unrounded {
@@ -196,7 +188,7 @@ fn uscale(x: u64, c: Scaler) -> Unrounded {
 #[inline]
 #[allow(clippy::many_single_char_names)]
 pub fn fixed_width(f: f64, n: i32) -> (u64, i32) {
-    assert!(n <= 18, "too many digits");
+    debug_assert!(n <= 18, "too many digits");
     let (m, e) = unpack64(f);
     let p = n - 1 - log10_pow2(e + 63);
     let u = uscale(m, prescale(e, p, log2_pow10(p)));
@@ -219,7 +211,7 @@ pub fn fixed_width(f: f64, n: i32) -> (u64, i32) {
 #[inline]
 #[allow(clippy::many_single_char_names)]
 pub fn parse(d: u64, p: i32) -> f64 {
-    assert!(d <= 10_000_000_000_000_000_000, "too many digits");
+    debug_assert!(d <= 10_000_000_000_000_000_000, "too many digits");
     let b = 64 - d.leading_zeros() as i32; // bits.Len64(d)
     let lp = log2_pow10(p);
     let mut e = (1074i32).min(53 - b - lp);
