@@ -47,7 +47,7 @@ fn pow10_normalized(e: i64, ten: &BigUint, b1p128: &BigUint) -> (BigUint, i64, b
     (d, be, exact)
 }
 
-/// Convert a 128-bit BigUint to PmHiLo (hi, lo), rounding up if not exact.
+/// Convert a 128-bit `BigUint` to `PmHiLo` (hi, lo), rounding up if not exact.
 fn to_pmhilo(d: &BigUint, exact: bool, b1p64: &BigUint) -> (u64, u64) {
     let (hi, lo) = d.div_mod_floor(b1p64);
     let mut uhi = u64_from(&hi);
