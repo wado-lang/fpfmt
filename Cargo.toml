@@ -9,6 +9,9 @@ repository = "https://github.com/wado-lang/fpfmt"
 autotests = false
 exclude = ["tools/", "tests/"]
 
+[features]
+small = []
+
 [workspace]
 members = [".", "tools/pow10gen", "tools/bench", "tools/wasm-size"]
 
@@ -26,6 +29,11 @@ workspace = true
 [[test]]
 name = "comprehensive"
 path = "tests/comprehensive.rs"
+
+[profile.release]
+lto = true
+opt-level = "z"
+strip = true
 
 [dev-dependencies]
 chacha8rand = "0.1"

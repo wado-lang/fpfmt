@@ -4,11 +4,10 @@
 
 use super::PmHiLo;
 
+#[cfg(not(feature = "small"))]
 pub(crate) const POW10_MIN: i32 = -348;
-pub(crate) const POW10_MAX: i32 = 347;
 
-/// `pow10_tab` holds 128-bit mantissas of powers of 10.
-/// The values are scaled so the high bit is always set.
+#[cfg(not(feature = "small"))]
 pub(crate) static POW10_TAB: [PmHiLo; 696] = [
     PmHiLo {
         hi: 0xfa8fd5a0081c0289,
@@ -2794,4 +2793,149 @@ pub(crate) static POW10_TAB: [PmHiLo; 696] = [
         hi: 0xd13eb46469447568,
         lo: 0xb48e6a0d2d2e5604,
     }, // 1e347 * 2**-1025
+];
+
+#[cfg(feature = "small")]
+pub(crate) const K: i32 = 27;
+
+#[cfg(feature = "small")]
+pub(crate) const Q_MIN: i32 = -13;
+
+#[cfg(feature = "small")]
+pub(crate) static POW10_COARSE: [PmHiLo; 26] = [
+    PmHiLo {
+        hi: 0x8049a4ac0c5811af,
+        lo: 0xdfa4769288829d87,
+    }, // 1e-351 * 2**1293
+    PmHiLo {
+        hi: 0xcf42894a5dce35eb,
+        lo: 0xadf9b3537d798a46,
+    }, // 1e-324 * 2**1204
+    PmHiLo {
+        hi: 0xa76c582338ed2622,
+        lo: 0x50d50d47f5090db1,
+    }, // 1e-297 * 2**1114
+    PmHiLo {
+        hi: 0x873e4f75e2224e69,
+        lo: 0xa588bb5917fb5d6e,
+    }, // 1e-270 * 2**1024
+    PmHiLo {
+        hi: 0xda7f5bf590966849,
+        lo: 0x50c65b8aaf957661,
+    }, // 1e-243 * 2**935
+    PmHiLo {
+        hi: 0xb080392cc4349ded,
+        lo: 0x427286b26955304c,
+    }, // 1e-216 * 2**845
+    PmHiLo {
+        hi: 0x8e938662882af53f,
+        lo: 0xab814b848d7d1163,
+    }, // 1e-189 * 2**755
+    PmHiLo {
+        hi: 0xe65829b3046b0afb,
+        lo: 0xf34b5a5ceed5aeed,
+    }, // 1e-162 * 2**666
+    PmHiLo {
+        hi: 0xba121a4650e4ddec,
+        lo: 0x6d0cb29d9e931bec,
+    }, // 1e-135 * 2**576
+    PmHiLo {
+        hi: 0x964e858c91ba2656,
+        lo: 0xc595f8072aef0790,
+    }, // 1e-108 * 2**486
+    PmHiLo {
+        hi: 0xf2d56790ab41c2a3,
+        lo: 0x051d8d66bdc0463c,
+    }, // 1e-81 * 2**397
+    PmHiLo {
+        hi: 0xc428d05aa4751e4d,
+        lo: 0x55681eb3c3d94779,
+    }, // 1e-54 * 2**307
+    PmHiLo {
+        hi: 0x9e74d1b791e07e49,
+        lo: 0x88a15d9b30aacb82,
+    }, // 1e-27 * 2**217
+    PmHiLo {
+        hi: 0x8000000000000000,
+        lo: 0x0000000000000000,
+    }, // 1e0 * 2**127
+    PmHiLo {
+        hi: 0xcecb8f27f4200f3a,
+        lo: 0x0000000000000000,
+    }, // 1e27 * 2**38
+    PmHiLo {
+        hi: 0xa70c3c40a64e6c52,
+        lo: 0x666f6f49a09826dc,
+    }, // 1e54 * 2**-52
+    PmHiLo {
+        hi: 0x86f0ac99b4e8dafe,
+        lo: 0x965fd744c2128e5c,
+    }, // 1e81 * 2**-142
+    PmHiLo {
+        hi: 0xda01ee641a708dea,
+        lo: 0x17f190b7df336b6a,
+    }, // 1e108 * 2**-231
+    PmHiLo {
+        hi: 0xb01ae745b101e9e5,
+        lo: 0xa13fa23008d18070,
+    }, // 1e135 * 2**-321
+    PmHiLo {
+        hi: 0x8e41ade9fbebc27e,
+        lo: 0xeba770ec417b8cf8,
+    }, // 1e162 * 2**-411
+    PmHiLo {
+        hi: 0xe5d3ef282a242e82,
+        lo: 0x70e9973757925a05,
+    }, // 1e189 * 2**-500
+    PmHiLo {
+        hi: 0xb9a74a0637ce2ee2,
+        lo: 0x926ac1d428e8c96d,
+    }, // 1e216 * 2**-590
+    PmHiLo {
+        hi: 0x95f83d0a1fb69cda,
+        lo: 0xb54250efea9b0671,
+    }, // 1e243 * 2**-680
+    PmHiLo {
+        hi: 0xf24a01a73cf2dcd0,
+        lo: 0x439cc4c698c37313,
+    }, // 1e270 * 2**-769
+    PmHiLo {
+        hi: 0xc3b8358109e84f08,
+        lo: 0xf579d07f13b8ff37,
+    }, // 1e297 * 2**-859
+    PmHiLo {
+        hi: 0x9e19db92b4e31baa,
+        lo: 0x93f85d3d957cb92e,
+    }, // 1e324 * 2**-949
+];
+
+#[cfg(feature = "small")]
+pub(crate) static POW10_FINE: [u64; 27] = [
+    0x8000000000000000, // 1e0 * 2**127
+    0xa000000000000000, // 1e1 * 2**124
+    0xc800000000000000, // 1e2 * 2**121
+    0xfa00000000000000, // 1e3 * 2**118
+    0x9c40000000000000, // 1e4 * 2**114
+    0xc350000000000000, // 1e5 * 2**111
+    0xf424000000000000, // 1e6 * 2**108
+    0x9896800000000000, // 1e7 * 2**104
+    0xbebc200000000000, // 1e8 * 2**101
+    0xee6b280000000000, // 1e9 * 2**98
+    0x9502f90000000000, // 1e10 * 2**94
+    0xba43b74000000000, // 1e11 * 2**91
+    0xe8d4a51000000000, // 1e12 * 2**88
+    0x9184e72a00000000, // 1e13 * 2**84
+    0xb5e620f480000000, // 1e14 * 2**81
+    0xe35fa931a0000000, // 1e15 * 2**78
+    0x8e1bc9bf04000000, // 1e16 * 2**74
+    0xb1a2bc2ec5000000, // 1e17 * 2**71
+    0xde0b6b3a76400000, // 1e18 * 2**68
+    0x8ac7230489e80000, // 1e19 * 2**64
+    0xad78ebc5ac620000, // 1e20 * 2**61
+    0xd8d726b7177a8000, // 1e21 * 2**58
+    0x878678326eac9000, // 1e22 * 2**54
+    0xa968163f0a57b400, // 1e23 * 2**51
+    0xd3c21bcecceda100, // 1e24 * 2**48
+    0x84595161401484a0, // 1e25 * 2**44
+    0xa56fa5b99019a5c8, // 1e26 * 2**41
 ];

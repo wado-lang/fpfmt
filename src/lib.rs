@@ -9,6 +9,9 @@
 
 mod pow10tab;
 
+#[cfg(feature = "small")]
+use pow10tab::{K, POW10_COARSE, POW10_FINE, Q_MIN};
+#[cfg(not(feature = "small"))]
 use pow10tab::{POW10_MIN, POW10_TAB};
 
 /// `PmHiLo` represents `hi<<64 - lo`.
@@ -28,14 +31,6 @@ struct Scaler {
 /// Unrounded represents an unrounded value.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct Unrounded(u64);
-
-impl core::fmt::Display for Unrounded {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let u = self.0;
-        let plus = if u & 1 != 0 { "+" } else { "" };
-        write!(f, "\u{27e8}{}.{}{plus}\u{27e9}", u >> 2, 5 * ((u >> 1) & 1))
-    }
-}
 
 #[cfg(test)]
 #[allow(clippy::float_cmp)]
@@ -124,7 +119,6 @@ const UINT64_POW10: [u64; 20] = [
 /// `unpack64` returns (m, e) such that `f = m * 2**e`.
 /// The caller is expected to have handled 0, NaN, and +/-Inf already.
 /// To unpack an `f32`, use `unpack64(f as f64)`.
-#[inline]
 #[allow(clippy::many_single_char_names)]
 fn unpack64(f: f64) -> (u64, i32) {
     const SHIFT: u32 = 64 - 53; // 11
@@ -160,6 +154,7 @@ fn unmin(x: u64) -> Unrounded {
 
 /// `prescale` returns the scaling constants for (e, p).
 /// `lp` must be `log2_pow10(p)`.
+#[cfg(not(feature = "small"))]
 #[inline]
 fn prescale(e: i32, p: i32, lp: i32) -> Scaler {
     Scaler {
@@ -168,10 +163,66 @@ fn prescale(e: i32, p: i32, lp: i32) -> Scaler {
     }
 }
 
+#[cfg(feature = "small")]
+#[allow(clippy::many_single_char_names)]
+fn mul_pow10(p: i32) -> PmHiLo {
+    let q = p.div_euclid(K);
+    let r = p.rem_euclid(K) as usize;
+
+    let c = POW10_COARSE[(q - Q_MIN) as usize];
+    let f = POW10_FINE[r];
+
+    // Convert coarse from PmHiLo to raw u128 (hi<<64 - lo).
+    let c_raw = (u128::from(c.hi) << 64).wrapping_sub(u128::from(c.lo));
+    let c_hi = (c_raw >> 64) as u64;
+    let c_lo = c_raw as u64;
+
+    // Product = c_raw * f * 2^64 (256-bit).
+    // Split into a1*2^64 + a0 = c_raw * f, then shift left 64.
+    let a1 = u128::from(c_hi) * u128::from(f);
+    let a0 = u128::from(c_lo) * u128::from(f);
+
+    // Top 128 = a1 + (a0 >> 64); remainder = (a0 as u64).
+    let mut top = a1 + (a0 >> 64);
+    let has_remainder = a0 as u64 != 0;
+
+    // Round up if not exact (matching generator convention).
+    if has_remainder {
+        top += 1;
+    }
+
+    // Normalize: ensure bit 127 is set.
+    let norm = 1 - (top >> 127) as u32;
+    top <<= norm;
+
+    let hi = (top >> 64) as u64;
+    let lo = top as u64;
+
+    // Convert to PmHiLo (hi<<64 - lo).
+    if lo != 0 {
+        PmHiLo {
+            hi: hi + 1,
+            lo: lo.wrapping_neg(),
+        }
+    } else {
+        PmHiLo { hi, lo: 0 }
+    }
+}
+
+/// `prescale` returns the scaling constants for (e, p).
+/// `lp` must be `log2_pow10(p)`.
+#[cfg(feature = "small")]
+#[inline]
+fn prescale(e: i32, p: i32, lp: i32) -> Scaler {
+    Scaler {
+        pm: mul_pow10(p),
+        s: -(e + lp + 3),
+    }
+}
+
 /// `uscale` returns `unround(x * 2**e * 10**p)`.
 /// The caller should pass `c = prescale(e, p, log2_pow10(p))`
 /// and should have left-justified x so its high bit is set.
-#[inline]
 fn uscale(x: u64, c: Scaler) -> Unrounded {
     let r = u128::from(x) * u128::from(c.pm.hi);
     let mut hi = (r >> 64) as u64;
@@ -193,10 +244,9 @@ fn uscale(x: u64, c: Scaler) -> Unrounded {
 ///
 /// Panics if `n > 18`.
 #[must_use]
-#[inline]
 #[allow(clippy::many_single_char_names)]
 pub fn fixed_width(f: f64, n: i32) -> (u64, i32) {
-    assert!(n <= 18, "too many digits");
+    debug_assert!(n <= 18, "too many digits");
     let (m, e) = unpack64(f);
     let p = n - 1 - log10_pow2(e + 63);
     let u = uscale(m, prescale(e, p, log2_pow10(p)));
@@ -216,10 +266,9 @@ pub fn fixed_width(f: f64, n: i32) -> (u64, i32) {
 ///
 /// Panics if `d > 10_000_000_000_000_000_000` (more than 19 digits).
 #[must_use]
-#[inline]
 #[allow(clippy::many_single_char_names)]
 pub fn parse(d: u64, p: i32) -> f64 {
-    assert!(d <= 10_000_000_000_000_000_000, "too many digits");
+    debug_assert!(d <= 10_000_000_000_000_000_000, "too many digits");
     let b = 64 - d.leading_zeros() as i32; // bits.Len64(d)
     let lp = log2_pow10(p);
     let mut e = (1074i32).min(53 - b - lp);
@@ -240,7 +289,6 @@ pub fn parse(d: u64, p: i32) -> f64 {
 /// Parses a decimal string and returns the nearest f64.
 /// Returns `None` if the input is malformed.
 #[must_use]
-#[inline]
 pub fn parse_text(s: &[u8]) -> Option<f64> {
     fn is_digit(c: u8) -> bool {
         c.wrapping_sub(b'0') <= 9
@@ -308,7 +356,6 @@ pub fn parse_text(s: &[u8]) -> Option<f64> {
 /// using as few digits as possible that will still round trip
 /// back to the original f64.
 #[must_use]
-#[inline]
 #[allow(clippy::many_single_char_names)]
 pub fn short(f: f64) -> (u64, i32) {
     const MIN_EXP: i32 = -1085;
@@ -357,7 +404,6 @@ fn skewed(e: i32) -> i32 {
 /// Removes trailing zeros from `x * 10**p`.
 /// If x ends in k zeros, returns `(x/10**k, p+k)`.
 /// Assumes that x ends in at most 16 zeros.
-#[inline]
 #[allow(clippy::unreadable_literal)]
 fn trim_zeros(x: u64, p: i32) -> (u64, i32) {
     const INV5P8: u64 = 0xc767074b22e90e21; // inverse of 5**8
@@ -418,7 +464,6 @@ const I2A: &[u8] = b"\
 /// Formats the decimal representation of u into a.
 /// The caller is responsible for ensuring that a is big enough to hold u.
 /// If a is too big, leading zeros will be filled in as needed.
-#[inline]
 fn format_base10(a: &mut [u8], mut u: u64) {
     let mut nd = a.len();
     while nd >= 8 {
@@ -469,7 +514,6 @@ fn format_base10(a: &mut [u8], mut u: u64) {
 /// The caller must pass nd set to the number of digits in d.
 /// Returns the number of bytes written to s.
 #[must_use]
-#[inline]
 pub fn fmt_float(s: &mut [u8], d: u64, p: i32, nd: i32) -> usize {
     let nd = nd as usize;
     // Put digits into s, leaving room for decimal point.
@@ -519,6 +563,7 @@ mod tests {
 
     /// `TestPow10`: verify power-of-10 table entries.
     /// Port of Go's `TestPow10`.
+    #[cfg(not(feature = "small"))]
     #[test]
     fn test_pow10() {
         let cases: [(i32, PmHiLo, i32); 4] = [

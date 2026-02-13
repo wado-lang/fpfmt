@@ -17,6 +17,55 @@ use num_traits::Zero;
 const MIN_EXP: i64 = -348;
 const MAX_EXP: i64 = 347;
 
+// Decomposition: p = K*q + r, 0 <= r < K
+const K: i64 = 27;
+const Q_MIN: i64 = -13; // div_euclid(MIN_EXP, K)
+const Q_MAX: i64 = 12; // div_euclid(MAX_EXP, K)
+
+/// Normalize 10^e into 128-bit mantissa in [2^127, 2^128).
+/// Returns (d, be, exact) where d is the floor of the mantissa,
+/// be is the binary exponent, and exact indicates no rounding was needed.
+fn pow10_normalized(e: i64, ten: &BigUint, b1p128: &BigUint) -> (BigUint, i64, bool) {
+    let (mut num, mut denom) = if e >= 0 {
+        (ten.pow(e as u32), BigUint::from(1u64))
+    } else {
+        (BigUint::from(1u64), ten.pow((-e) as u32))
+    };
+
+    let mut be: i64 = 0;
+    while num.cmp(&(&denom * b1p128)) == Ordering::Less {
+        num <<= 1;
+        be += 1;
+    }
+    while num.cmp(&(&denom * b1p128)) != Ordering::Less {
+        denom <<= 1;
+        be -= 1;
+    }
+
+    let d = &num / &denom;
+    let exact = (&num % &denom).is_zero();
+    (d, be, exact)
+}
+
+/// Convert a 128-bit `BigUint` to `PmHiLo` (hi, lo), rounding up if not exact.
+fn to_pmhilo(d: &BigUint, exact: bool, b1p64: &BigUint) -> (u64, u64) {
+    let (hi, lo) = d.div_mod_floor(b1p64);
+    let mut uhi = u64_from(&hi);
+    let mut ulo = u64_from(&lo);
+
+    if !exact {
+        ulo = ulo.wrapping_add(1);
+        if ulo == 0 {
+            uhi += 1;
+        }
+    }
+    if ulo != 0 {
+        uhi += 1;
+        ulo = ulo.wrapping_neg();
+    }
+    (uhi, ulo)
+}
+
 fn main() {
     let ten = BigUint::from(10u64);
     let b1p64 = BigUint::from(1u64) << 64;
@@ -30,64 +79,88 @@ fn main() {
 
 #![allow(dead_code, clippy::unreadable_literal)]
 
-use super::PmHiLo;
+use super::PmHiLo;"
+    )
+    .unwrap();
 
-pub(crate) const POW10_MIN: i32 = {MIN_EXP};
-pub(crate) const POW10_MAX: i32 = {MAX_EXP};
-
-/// `pow10_tab` holds 128-bit mantissas of powers of 10.
-/// The values are scaled so the high bit is always set.
-pub(crate) static POW10_TAB: [PmHiLo; {}] = [",
+    // === Non-small: original single table ===
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "#[cfg(not(feature = \"small\"))]\npub(crate) const POW10_MIN: i32 = {MIN_EXP};"
+    )
+    .unwrap();
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "#[cfg(not(feature = \"small\"))]\npub(crate) static POW10_TAB: [PmHiLo; {}] = [",
         MAX_EXP - MIN_EXP + 1,
     )
     .unwrap();
 
     for e in MIN_EXP..=MAX_EXP {
-        // r = 10^e as a rational (num/denom).
-        let (mut num, mut denom) = if e >= 0 {
-            (ten.pow(e as u32), BigUint::from(1u64))
-        } else {
-            (BigUint::from(1u64), ten.pow((-e) as u32))
-        };
-
-        let mut be: i64 = 0;
-        // while r < 2^128: r *= 2
-        while num.cmp(&(&denom * &b1p128)) == Ordering::Less {
-            num <<= 1;
-            be += 1;
-        }
-        // while r >= 2^128: r /= 2
-        while num.cmp(&(&denom * &b1p128)) != Ordering::Less {
-            denom <<= 1;
-            be -= 1;
-        }
-
-        let d = &num / &denom;
-        let (hi, lo) = d.div_mod_floor(&b1p64);
-        let mut uhi = u64_from(&hi);
-        let mut ulo = u64_from(&lo);
-
-        // Round up if not exact.
-        if !(&num % &denom).is_zero() {
-            ulo = ulo.wrapping_add(1);
-            if ulo == 0 {
-                uhi += 1;
-            }
-        }
-        // Convert to hi<<64 - lo representation.
-        if ulo != 0 {
-            uhi += 1;
-            ulo = ulo.wrapping_neg();
-        }
-
+        let (d, be, exact) = pow10_normalized(e, &ten, &b1p128);
+        let (uhi, ulo) = to_pmhilo(&d, exact, &b1p64);
         writeln!(
             out,
             "    PmHiLo {{ hi: {uhi:#018x}, lo: {ulo:#018x} }}, // 1e{e} * 2**{be}",
         )
         .unwrap();
     }
-
     out.push_str("];\n");
+
+    // === Small: decomposed tables ===
+    let n_coarse = Q_MAX - Q_MIN + 1;
+
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "#[cfg(feature = \"small\")]\npub(crate) const K: i32 = {K};"
+    )
+    .unwrap();
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "#[cfg(feature = \"small\")]\npub(crate) const Q_MIN: i32 = {Q_MIN};"
+    )
+    .unwrap();
+
+    // POW10_COARSE: 10^(K*q) for q = Q_MIN..=Q_MAX
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "#[cfg(feature = \"small\")]\npub(crate) static POW10_COARSE: [PmHiLo; {n_coarse}] = [",
+    )
+    .unwrap();
+    for q in Q_MIN..=Q_MAX {
+        let e = K * q;
+        let (d, be, exact) = pow10_normalized(e, &ten, &b1p128);
+        let (uhi, ulo) = to_pmhilo(&d, exact, &b1p64);
+        writeln!(
+            out,
+            "    PmHiLo {{ hi: {uhi:#018x}, lo: {ulo:#018x} }}, // 1e{e} * 2**{be}",
+        )
+        .unwrap();
+    }
+    out.push_str("];\n");
+
+    // POW10_FINE: top 64 bits of 10^r normalized to 128 bits, for r = 0..K
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "#[cfg(feature = \"small\")]\npub(crate) static POW10_FINE: [u64; {K}] = [",
+    )
+    .unwrap();
+    for r in 0..K {
+        let (d, be, exact) = pow10_normalized(r, &ten, &b1p128);
+        assert!(exact, "10^{r} should be exact");
+        let (hi, lo) = d.div_mod_floor(&b1p64);
+        assert!(lo.is_zero(), "10^{r} should have lo=0");
+        let uhi = u64_from(&hi);
+        writeln!(out, "    {uhi:#018x}, // 1e{r} * 2**{be}",).unwrap();
+    }
+    out.push_str("];\n");
+
     fs::write("src/pow10tab.rs", &out).expect("failed to write src/pow10tab.rs");
 }
 
