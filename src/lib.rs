@@ -9,6 +9,9 @@
 
 mod pow10tab;
 
+#[cfg(feature = "small")]
+use pow10tab::{K, POW10_COARSE, POW10_FINE, Q_MIN};
+#[cfg(not(feature = "small"))]
 use pow10tab::{POW10_MIN, POW10_TAB};
 
 /// `PmHiLo` represents `hi<<64 - lo`.
@@ -152,10 +155,69 @@ fn unmin(x: u64) -> Unrounded {
 
 /// `prescale` returns the scaling constants for (e, p).
 /// `lp` must be `log2_pow10(p)`.
+#[cfg(not(feature = "small"))]
 #[inline]
 fn prescale(e: i32, p: i32, lp: i32) -> Scaler {
     Scaler {
         pm: POW10_TAB[(p - POW10_MIN) as usize],
+        s: -(e + lp + 3),
+    }
+}
+
+#[cfg(feature = "small")]
+#[inline]
+#[allow(clippy::many_single_char_names)]
+fn mul_pow10(p: i32) -> PmHiLo {
+    let q = p.div_euclid(K);
+    let r = p.rem_euclid(K) as usize;
+
+    let c = POW10_COARSE[(q - Q_MIN) as usize];
+    let f = POW10_FINE[r];
+
+    // Convert coarse from PmHiLo to raw u128 (hi<<64 - lo).
+    let c_raw = (u128::from(c.hi) << 64).wrapping_sub(u128::from(c.lo));
+    let c_hi = (c_raw >> 64) as u64;
+    let c_lo = c_raw as u64;
+
+    // Product = c_raw * f * 2^64 (256-bit).
+    // Split into a1*2^64 + a0 = c_raw * f, then shift left 64.
+    let a1 = u128::from(c_hi) * u128::from(f);
+    let a0 = u128::from(c_lo) * u128::from(f);
+
+    // Top 128 = a1 + (a0 >> 64); remainder = (a0 as u64).
+    let mut top = a1 + (a0 >> 64);
+    let has_remainder = a0 as u64 != 0;
+
+    // Round up if not exact (matching generator convention).
+    if has_remainder {
+        top += 1;
+    }
+
+    // Normalize: ensure bit 127 is set.
+    let norm = 1 - (top >> 127) as u32;
+    top <<= norm;
+
+    let hi = (top >> 64) as u64;
+    let lo = top as u64;
+
+    // Convert to PmHiLo (hi<<64 - lo).
+    if lo != 0 {
+        PmHiLo {
+            hi: hi + 1,
+            lo: lo.wrapping_neg(),
+        }
+    } else {
+        PmHiLo { hi, lo: 0 }
+    }
+}
+
+/// `prescale` returns the scaling constants for (e, p).
+/// `lp` must be `log2_pow10(p)`.
+#[cfg(feature = "small")]
+#[inline]
+fn prescale(e: i32, p: i32, lp: i32) -> Scaler {
+    Scaler {
+        pm: mul_pow10(p),
         s: -(e + lp + 3),
     }
 }
@@ -511,6 +573,7 @@ mod tests {
 
     /// `TestPow10`: verify power-of-10 table entries.
     /// Port of Go's `TestPow10`.
+    #[cfg(not(feature = "small"))]
     #[test]
     fn test_pow10() {
         let cases: [(i32, PmHiLo, i32); 4] = [

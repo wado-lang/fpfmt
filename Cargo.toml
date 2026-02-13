@@ -9,6 +9,9 @@ repository = "https://github.com/wado-lang/fpfmt"
 autotests = false
 exclude = ["tools/", "tests/"]
 
+[features]
+small = []
+
 [workspace]
 members = [".", "tools/pow10gen", "tools/bench", "tools/wasm-size"]
 

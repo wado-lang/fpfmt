@@ -21,28 +21,46 @@ Regenerate the power-of-10 table:
 cargo run -p pow10gen
 ```
 
+## Features
+
+### `small` — compact tables for WASM
+
+Enable the `small` feature to replace the 11 KB power-of-10 lookup table with
+two smaller tables (632 bytes total) that are multiplied at runtime.
+This reduces WASM binary size from 14 KB to **4 KB** with a modest
+formatting slowdown (~1.6x), while parsing is unaffected.
+Still **2.4x faster** than ryu for formatting.
+
+```toml
+fpfmt = { version = "0.2", features = ["small"] }
+```
+
 ## Benchmarks
 
 Formatting and parsing 8 representative f64 values (`1.0`, `0.1`, `3.14`, `PI`, `E`, `1e23`, `5e-324`, `1.7976931348623157e308`).
 
 Measured on Apple M3 Pro, macOS 15.7.3 (aarch64):
 
-| Task | fpfmt | ryu | stdlib |
-|------|------:|----:|-------:|
-| **format** (f64 → string) | 63 ns | 164 ns | 535 ns |
-| **parse** (string → f64) | 738 ns | — | 702 ns |
+| Task | fpfmt | fpfmt `small` | ryu | stdlib |
+|------|------:|--------------:|----:|-------:|
+| **format** (f64 → string) | 65 ns | 102 ns | 240 ns | 528 ns |
+| **parse** (string → f64) | 697 ns | 701 ns | — | 658 ns |
 
 ```sh
 cargo bench -p bench
+cargo bench -p bench --features small
 ```
 
-## Wasm size
+## WASM size
 
-32,970 bytes for `short` + `parse` as a cdylib (`wasm32-unknown-unknown`, `-Oz`).
+| Configuration | Size |
+|---------------|-----:|
+| default | 14,428 bytes |
+| `small` | **4,224 bytes** |
 
 ```sh
-RUSTFLAGS="-C opt-level=s" cargo build --target wasm32-unknown-unknown --release -p wasm-size
-RUSTFLAGS="-C opt-level=z" cargo build --target wasm32-unknown-unknown --release -p wasm-size
+cargo build --target wasm32-unknown-unknown --release -p wasm-size
+cargo build --target wasm32-unknown-unknown --release -p wasm-size --features small
 wc -c target/wasm32-unknown-unknown/release/wasm_size.wasm
 ```
 
