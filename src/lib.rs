@@ -119,7 +119,6 @@ const UINT64_POW10: [u64; 20] = [
 /// `unpack64` returns (m, e) such that `f = m * 2**e`.
 /// The caller is expected to have handled 0, NaN, and +/-Inf already.
 /// To unpack an `f32`, use `unpack64(f as f64)`.
-#[inline]
 #[allow(clippy::many_single_char_names)]
 fn unpack64(f: f64) -> (u64, i32) {
     const SHIFT: u32 = 64 - 53; // 11
@@ -165,7 +164,6 @@ fn prescale(e: i32, p: i32, lp: i32) -> Scaler {
 }
 
 #[cfg(feature = "small")]
-#[inline]
 #[allow(clippy::many_single_char_names)]
 fn mul_pow10(p: i32) -> PmHiLo {
     let q = p.div_euclid(K);
@@ -225,7 +223,6 @@ fn prescale(e: i32, p: i32, lp: i32) -> Scaler {
 /// `uscale` returns `unround(x * 2**e * 10**p)`.
 /// The caller should pass `c = prescale(e, p, log2_pow10(p))`
 /// and should have left-justified x so its high bit is set.
-#[inline]
 fn uscale(x: u64, c: Scaler) -> Unrounded {
     let r = u128::from(x) * u128::from(c.pm.hi);
     let mut hi = (r >> 64) as u64;
@@ -247,7 +244,6 @@ fn uscale(x: u64, c: Scaler) -> Unrounded {
 ///
 /// Panics if `n > 18`.
 #[must_use]
-#[inline]
 #[allow(clippy::many_single_char_names)]
 pub fn fixed_width(f: f64, n: i32) -> (u64, i32) {
     debug_assert!(n <= 18, "too many digits");
@@ -270,7 +266,6 @@ pub fn fixed_width(f: f64, n: i32) -> (u64, i32) {
 ///
 /// Panics if `d > 10_000_000_000_000_000_000` (more than 19 digits).
 #[must_use]
-#[inline]
 #[allow(clippy::many_single_char_names)]
 pub fn parse(d: u64, p: i32) -> f64 {
     debug_assert!(d <= 10_000_000_000_000_000_000, "too many digits");
@@ -294,7 +289,6 @@ pub fn parse(d: u64, p: i32) -> f64 {
 /// Parses a decimal string and returns the nearest f64.
 /// Returns `None` if the input is malformed.
 #[must_use]
-#[inline]
 pub fn parse_text(s: &[u8]) -> Option<f64> {
     fn is_digit(c: u8) -> bool {
         c.wrapping_sub(b'0') <= 9
@@ -362,7 +356,6 @@ pub fn parse_text(s: &[u8]) -> Option<f64> {
 /// using as few digits as possible that will still round trip
 /// back to the original f64.
 #[must_use]
-#[inline]
 #[allow(clippy::many_single_char_names)]
 pub fn short(f: f64) -> (u64, i32) {
     const MIN_EXP: i32 = -1085;
@@ -411,7 +404,6 @@ fn skewed(e: i32) -> i32 {
 /// Removes trailing zeros from `x * 10**p`.
 /// If x ends in k zeros, returns `(x/10**k, p+k)`.
 /// Assumes that x ends in at most 16 zeros.
-#[inline]
 #[allow(clippy::unreadable_literal)]
 fn trim_zeros(x: u64, p: i32) -> (u64, i32) {
     const INV5P8: u64 = 0xc767074b22e90e21; // inverse of 5**8
@@ -472,7 +464,6 @@ const I2A: &[u8] = b"\
 /// Formats the decimal representation of u into a.
 /// The caller is responsible for ensuring that a is big enough to hold u.
 /// If a is too big, leading zeros will be filled in as needed.
-#[inline]
 fn format_base10(a: &mut [u8], mut u: u64) {
     let mut nd = a.len();
     while nd >= 8 {
@@ -523,7 +514,6 @@ fn format_base10(a: &mut [u8], mut u: u64) {
 /// The caller must pass nd set to the number of digits in d.
 /// Returns the number of bytes written to s.
 #[must_use]
-#[inline]
 pub fn fmt_float(s: &mut [u8], d: u64, p: i32, nd: i32) -> usize {
     let nd = nd as usize;
     // Put digits into s, leaving room for decimal point.

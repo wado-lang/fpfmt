@@ -55,8 +55,8 @@ Measured on Apple M3 Pro, macOS 15.7.3 (aarch64):
 
 | Task                      |  fpfmt | fpfmt `small` |    ryu | stdlib |
 | ------------------------- | -----: | ------------: | -----: | -----: |
-| **format** (f64 → string) |  65 ns |        102 ns | 240 ns | 528 ns |
-| **parse** (string → f64)  | 697 ns |        701 ns |      — | 658 ns |
+| **format** (f64 → string) |  63 ns |         99 ns | 239 ns | 529 ns |
+| **parse** (string → f64)  | 690 ns |        700 ns |      — | 675 ns |
 
 ```sh
 cargo bench -p bench
@@ -67,8 +67,8 @@ cargo bench -p bench --features small
 
 | Configuration |            Size |
 | ------------- | --------------: |
-| default       |    14,428 bytes |
-| `small`       | **4,224 bytes** |
+| default       |    14,379 bytes |
+| `small`       | **4,175 bytes** |
 
 ```sh
 cargo build --target wasm32-unknown-unknown --release -p wasm-size
