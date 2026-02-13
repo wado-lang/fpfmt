@@ -23,13 +23,25 @@ cargo run -p pow10gen
 
 ## Features
 
-### `small` — compact tables for WASM
+### `small` — compact tables for Wasm
 
-Enable the `small` feature to replace the 11 KB power-of-10 lookup table with
-two smaller tables (632 bytes total) that are multiplied at runtime.
-This reduces WASM binary size from 14 KB to **4 KB** with a modest
-formatting slowdown (~1.6x), while parsing is unaffected.
-Still **2.4x faster** than ryu for formatting.
+The core algorithm needs `10^p` as a 128-bit normalized mantissa for each
+exponent `p` in −348..=347. By default, all 696 entries are stored in a flat
+lookup table (696 × 16 = 11 KB).
+
+The `small` feature decomposes the lookup using `10^p = 10^(27q) × 10^r`
+where `p = 27q + r` and `0 ≤ r < 27`. This replaces the single table with:
+
+- `POW10_COARSE`: 26 entries of `(u64, u64)` for `10^(27q)` — 416 bytes
+- `POW10_FINE`: 27 entries of `u64` for `10^r` — 216 bytes
+
+Fine entries need only one `u64` (not two) because `10^r` for `r ≤ 26` is
+exact at 128 bits and the low 64 bits are always zero.
+
+At runtime, `prescale` multiplies the two factors back together with u128
+arithmetic instead of doing a direct table lookup. This reduces Wasm binary
+size from 14 KB to **4 KB** with a modest formatting slowdown (~1.6x),
+while parsing is unaffected. Still **2.4x faster** than ryu for formatting.
 
 ```toml
 fpfmt = { version = "0.2", features = ["small"] }
@@ -41,22 +53,22 @@ Formatting and parsing 8 representative f64 values (`1.0`, `0.1`, `3.14`, `PI`, 
 
 Measured on Apple M3 Pro, macOS 15.7.3 (aarch64):
 
-| Task | fpfmt | fpfmt `small` | ryu | stdlib |
-|------|------:|--------------:|----:|-------:|
-| **format** (f64 → string) | 65 ns | 102 ns | 240 ns | 528 ns |
-| **parse** (string → f64) | 697 ns | 701 ns | — | 658 ns |
+| Task                      |  fpfmt | fpfmt `small` |    ryu | stdlib |
+| ------------------------- | -----: | ------------: | -----: | -----: |
+| **format** (f64 → string) |  65 ns |        102 ns | 240 ns | 528 ns |
+| **parse** (string → f64)  | 697 ns |        701 ns |      — | 658 ns |
 
 ```sh
 cargo bench -p bench
 cargo bench -p bench --features small
 ```
 
-## WASM size
+## Wasm size
 
-| Configuration | Size |
-|---------------|-----:|
-| default | 14,428 bytes |
-| `small` | **4,224 bytes** |
+| Configuration |            Size |
+| ------------- | --------------: |
+| default       |    14,428 bytes |
+| `small`       | **4,224 bytes** |
 
 ```sh
 cargo build --target wasm32-unknown-unknown --release -p wasm-size
