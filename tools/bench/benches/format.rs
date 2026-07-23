@@ -52,7 +52,21 @@ fn bench_format(c: &mut Criterion) {
 }
 
 fn bench_parse(c: &mut Criterion) {
-    let strings: Vec<String> = VALUES.iter().map(|f| f.to_string()).collect();
+    // Parse the shortest round-trip strings that fpfmt itself emits, so the
+    // benchmark measures parsing valid input for both parsers. `f.to_string()`
+    // expands values like 5e-324 to a several-hundred-digit decimal, which
+    // fpfmt's 19-significant-digit parser rejects rather than parses — that
+    // would measure rejection speed, not parsing.
+    let strings: Vec<String> = VALUES
+        .iter()
+        .map(|&f| {
+            let (d, p) = fpfmt::short(f);
+            let nd = fpfmt::digits(d);
+            let mut buf = [0u8; 32];
+            let n = fpfmt::fmt_float(&mut buf, d, p, nd);
+            core::str::from_utf8(&buf[..n]).unwrap().to_string()
+        })
+        .collect();
 
     let mut group = c.benchmark_group("parse");
 
