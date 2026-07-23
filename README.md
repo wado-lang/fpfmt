@@ -40,8 +40,8 @@ exact at 128 bits and the low 64 bits are always zero.
 
 At runtime, `prescale` multiplies the two factors back together with u128
 arithmetic instead of doing a direct table lookup. This reduces Wasm binary
-size from 14 KB to **4 KB** with a modest formatting slowdown (~1.6x),
-while parsing is unaffected. Still **~1.3x faster** than ryu for formatting.
+size from 14 KB to **4 KB** with a modest formatting slowdown (~1.6x) and a
+smaller parsing one (~1.2x). Still **~1.3x faster** than ryu for formatting.
 
 ```toml
 fpfmt = { version = "0.2", features = ["small"] }
@@ -49,14 +49,14 @@ fpfmt = { version = "0.2", features = ["small"] }
 
 ## Benchmarks
 
-Formatting and parsing 8 representative f64 values (`1.0`, `0.1`, `3.14`, `PI`, `E`, `1e23`, `5e-324`, `1.7976931348623157e308`).
+Formatting and parsing 8 representative f64 values (`1.0`, `0.1`, `3.14`, `PI`, `E`, `1e23`, `5e-324`, `1.7976931348623157e308`). Parse inputs are each value's shortest round-trip string.
 
 Measured on Intel Xeon (2.10 GHz), Ubuntu 24.04 (x86_64), rustc 1.95:
 
-| Task                      |  fpfmt | fpfmt `small` |    ryu |  stdlib |
-| ------------------------- | -----: | ------------: | -----: | ------: |
-| **format** (f64 → string) | 152 ns |        238 ns | 308 ns |  916 ns |
-| **parse** (string → f64)  | 422 ns |        311 ns |      — | 1109 ns |
+| Task                      |  fpfmt | fpfmt `small` |    ryu | stdlib |
+| ------------------------- | -----: | ------------: | -----: | -----: |
+| **format** (f64 → string) | 150 ns |        237 ns | 308 ns | 927 ns |
+| **parse** (string → f64)  |  67 ns |         80 ns |      — | 113 ns |
 
 ```sh
 cargo bench -p bench
