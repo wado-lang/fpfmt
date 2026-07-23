@@ -35,5 +35,8 @@ lto = true
 opt-level = "z"
 strip = true
 
+[profile.bench]
+opt-level = 3
+
 [dev-dependencies]
 chacha8rand = "0.1"
