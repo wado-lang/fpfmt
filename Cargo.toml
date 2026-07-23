@@ -3,6 +3,7 @@
 name = "fpfmt"
 version = "0.3.0"
 edition = "2024"
+rust-version = "1.95"
 description = "Floating-point formatting and parsing, ported from rsc/fpfmt"
 license = "BSD-3-Clause"
 repository = "https://github.com/wado-lang/fpfmt"

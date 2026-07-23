@@ -127,6 +127,7 @@ fn unpack64(f: f64) -> (u64, i32) {
     let mut m = (1u64 << 63) | ((b & ((1u64 << 52) - 1)) << SHIFT);
     let mut e = ((b >> 52) & ((1u64 << SHIFT) - 1)) as i32;
     if e == 0 {
+        core::hint::cold_path();
         m &= !(1u64 << 63);
         e = MIN_EXP;
         let s = m.leading_zeros();
@@ -366,10 +367,12 @@ pub fn short(f: f64) -> (u64, i32) {
     let mut z: i32 = 11; // extra zero bits at bottom of m; 11 for 53-bit m
     let p;
     if m == 1u64 << 63 && e > MIN_EXP {
+        core::hint::cold_path();
         p = -skewed(e + z);
         min = m - (1u64 << (z - 2) as u32); // min = m - 1/4 * 2**(e+z)
     } else {
         if e < MIN_EXP {
+            core::hint::cold_path();
             z = 11 + (MIN_EXP - e);
         }
         p = -log10_pow2(e + z);
