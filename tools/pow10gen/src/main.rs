@@ -157,7 +157,7 @@ use super::PmHiLo;"
         let (hi, lo) = d.div_mod_floor(&b1p64);
         assert!(lo.is_zero(), "10^{r} should have lo=0");
         let uhi = u64_from(&hi);
-        writeln!(out, "    {uhi:#018x}, // 1e{r} * 2**{be}",).unwrap();
+        writeln!(out, "    {uhi:#018x}, // 1e{r} * 2**{be}").unwrap();
     }
     out.push_str("];\n");
 
